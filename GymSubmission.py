@@ -1,6 +1,5 @@
-# ToDo: Group on technical_22 feature.  Create 3 of every model
-# ToDo: Try out grouping on both technical_34 and technical_22
-# ToDo: Investigate heirachial model with combination of 9 class group, both 3 class groups and 1 class group
+# ToDo: Create three models for volatility and beta.  Use only a single model for all other predictions
+# ToDo: Predict the market return to be the mean of the training market return
 # ToDo: On dfsp rescale each timestamp using dfmp and dfdp
 # ToDo: Do better imputation, possibly by adding previous timestamp data for factor (maybe use fancyimpute)
 # ToDo: Add flight/fight indicator to prediction - Weight stocks -1 to 1 by predicted volatility to create new factors (and y), and then predict the weighted y
@@ -9,6 +8,7 @@
 # ToDo: Use other models in an ensemble approach
 # ToDo: Reduce the number of factors used
 # ToDo: Add polynomials
+# ToDo: In final submission, submit two models, one with training mean market return, and one 0.00008 higher.
 
 def createPredictionModel(name, model, data, factors, outcome):
     print("\n" + name)

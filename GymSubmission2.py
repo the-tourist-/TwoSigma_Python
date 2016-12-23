@@ -11,8 +11,9 @@
 
 if __name__ == '__main__':
 
-    testing = True
-    full = True
+    testing = False
+    full = False
+
 
     def createPredictionModel(name, model, data, factors, outcome):
         print("\n" + name)
@@ -48,22 +49,22 @@ if __name__ == '__main__':
         else:
             print("Model Rejected - No Coefficients")
 
-        if testing:
-            # Perform CV
-            cvmodel = lm.ElasticNetCV(l1_ratio=model.l1_ratio_, alphas=[model.alpha_], n_jobs=1)  # (1, -1)[testing])
-            cvFolds = GroupKFold(n_splits=5)
-            cvPredictions = ms.cross_val_predict(cvmodel, filteredData[factors], filteredData[outcome],
-                                                 cv=cvFolds.split(filteredData,
-                                                                  groups=filteredData.index.get_level_values(0)),
-                                                 n_jobs=(1, -1)[testing])
+        # Perform CV
+        cvmodel = lm.ElasticNetCV(l1_ratio=model.l1_ratio_, alphas=[model.alpha_], n_jobs=1)  # (1, -1)[testing])
+        cvFolds = GroupKFold(n_splits=5)
+        cvPredictions = ms.cross_val_predict(cvmodel, filteredData[factors], filteredData[outcome],
+                                             cv=cvFolds.split(filteredData,
+                                                              groups=filteredData.index.get_level_values(0)),
+                                             n_jobs=(1, -1)[testing])
 
-            # Make predictions to cv set
-            cor = stats.pearsonr(cvPredictions, filteredData[outcome])
-            print("C-V Correlation: %s" % "{0:.3%}".format(cor[0]))
+        # Make predictions to cv set
+        cor = stats.pearsonr(cvPredictions, filteredData[outcome])
+        print("C-V Correlation: %s" % "{0:.3%}".format(cor[0]))
+        if testing:
             rScore = kagglegym.r_score(filteredData[outcome], cvPredictions)
             print("C-V R Score: %s" % "{0:.3%}".format(rScore))
-            model.cvPredictions = cvPredictions
 
+        model.cvPredictions = cvPredictions
         model.coefs = coefs
 
         return model
@@ -76,7 +77,8 @@ if __name__ == '__main__':
         def __init__(self):
             None
 
-    assetClasses = [assetClass() for i in range(3)]
+
+    assetClasses = [assetClass() for i in range(4)]
 
     import kagglegym
     import numpy as np
@@ -97,64 +99,76 @@ if __name__ == '__main__':
     # We get our initial observation by calling "reset"
     observation = env.reset()
     print("Train has {} rows".format(len(observation.train)))
-    print("Target column names: {}".format(", ".join(['"{}"'.format(col) for col in list(observation.target.columns)])))
+    print("Target column names: {}".format(
+        ", ".join(['"{}"'.format(col) for col in list(observation.target.columns)])))
 
     # Load data frame
     df = observation.train
-    df.set_index(["timestamp", "id"], inplace = True)
+    df.set_index(["timestamp", "id"], inplace=True)
     factors = [factor for factor in df.columns.values if not factor in ["id", "timestamp", "y"]]
 
-    class22Values = np.array(range(3)) / 2 - 0.5
+    random.seed()
+    if ~full & testing:
+        smallSize = 200000
+
+        timestamps = list(df.index.get_level_values(0).unique().values)
+        timestamps = [timestamps[i] for i in sorted(random.sample(range(len(timestamps)),
+                                                                  round(math.sqrt(smallSize / df.shape[0]) * len(
+                                                                      timestamps))))]
+        df = df.loc[timestamps]
+        ids = list(df.index.get_level_values(1).unique().values)
+        ids = [ids[i] for i in sorted(random.sample(range(len(ids)), round(smallSize / df.shape[0] * len(ids))))]
+        df = df.loc[df.index.get_level_values(1).isin(ids)]
+
+    class22Values = np.array(range(4)) / 2 - 1.0
+
+    yPredictions = pd.DataFrame(index=df.index)
+    yPredictions = yPredictions.assign(technical_22=df.technical_22)
+    yPredictions = yPredictions.assign(group22=float("NaN") * df.shape[0])
+    yPredictions = yPredictions.assign(y=df.y)
 
     for class22 in class22Values:
-        dfs = df[df.technical_22 == class22]
-
-        # Create small data frame
-        random.seed()
-        if ~full & testing:
-            smallSize = 75000
-            timestamps = list(dfs.index.get_level_values(0).unique().values)
-            timestamps = [ timestamps[i] for i in sorted(random.sample(range(len(timestamps)),
-                                                                       round(math.sqrt(smallSize / dfs.shape[0]) * len(timestamps)))) ]
-            dfs = dfs.loc[timestamps]
-            ids = list(dfs.index.get_level_values(1).unique().values)
-            ids = [ ids[i] for i in sorted(random.sample(range(len(ids)), round(smallSize / dfs.shape[0] * len(ids)))) ]
-            dfs = dfs.loc[dfs.index.get_level_values(1).isin(ids)]
+        if class22 == -1:
+            dfs = df
+        else:
+            dfs = df[df.technical_22 == class22]
 
         print("\nTECHNICAL 22 = ", class22, dfs.shape[0], "\n")
 
         # PreProcess data (normalise to percentile)
-        dfsp = 99 * dfs[factors].rank(method = "average", na_option = "keep", pct = True) // 1 / 100.0
+        dfsp = 99 * dfs[factors].rank(method="average", na_option="keep", pct=True) // 1 / 100.0
 
         # create factor range z-score lookup
         factorRange = pd.DataFrame()
         for factor in factors:
-            print(factor)
-            fr = pd.concat([dfsp[factor], dfs[factor]], axis = 1)
+            fr = pd.concat([dfsp[factor], dfs[factor]], axis=1)
             fr.columns = ["percentile", "min"]
             fr = fr.groupby("percentile").min()
-            fr = fr.assign(max = fr.shift(-1))
+            fr = fr.assign(max=fr.shift(-1))
             fr.set_value(0, "min", -math.inf)
             fr.set_value(fr.index.values.max(), "max", math.inf)
             fr.index = pd.MultiIndex.from_product([[factor], fr.index.get_level_values(0)])
             factorRange = factorRange.append(fr)
 
         # PreProcess data (convert to z-scores)
-        dfsp = dfsp.apply(axis = 0, func = lambda x: stats.norm.ppf(0.005 + x))
-        dfsp = dfsp.assign(y = dfs.y)
-        factorRange = factorRange.assign(z = stats.norm.ppf(0.005 + factorRange.index.get_level_values(1)))
+        dfsp = dfsp.apply(axis=0, func=lambda x: stats.norm.ppf(0.005 + x))
+        dfsp = dfsp.assign(y=dfs.y)
+        factorRange = factorRange.assign(z=stats.norm.ppf(0.005 + factorRange.index.get_level_values(1)))
 
         # Create market data frame
-        dfmp = dfsp.groupby(level = 0).mean()[np.hstack([factors, "y"])]
-        dfdp = dfsp.groupby(level = 0).std()[np.hstack([factors, "y"])]
+        dfmp = dfsp.groupby(level=0).mean()[np.hstack([factors, "y"])]
+        dfdp = dfsp.groupby(level=0).std()[np.hstack([factors, "y"])]
 
         # PreProcess data (impute)
-        dfmp.fillna(0, inplace = True)
-        dfsp.fillna(0, inplace = True)
+        dfmp.fillna(0, inplace=True)
+        dfsp.fillna(0, inplace=True)
 
-        usedFactors = ["fundamental_0", "fundamental_6", "fundamental_8", "fundamental_23", "fundamental_53", "fundamental_55", "fundamental_60",
-                      "technical_7", "technical_13", "technical_20", "technical_22", "technical_29", "technical_30", "technical_34", "technical_35", "technical_40"]
-        usedFactors = [factor for factor in usedFactors if factor != "technical_22"]
+        usedFactors = ["fundamental_0", "fundamental_6", "fundamental_8", "fundamental_23", "fundamental_53",
+                       "fundamental_55", "fundamental_60",
+                       "technical_7", "technical_13", "technical_20", "technical_22", "technical_29",
+                       "technical_30", "technical_34", "technical_35", "technical_40"]
+        if class22 != -1:
+            usedFactors = [factor for factor in usedFactors if factor != "technical_22"]
 
         # Create simple model
         # elnetModel_Y = createPredictionModel("ElasticNet - Y",
@@ -163,52 +177,64 @@ if __name__ == '__main__':
 
         # Create market model
         elnetModel_Market = createPredictionModel("ElasticNet - Market",
-                                                  lm.ElasticNetCV(l1_ratio = [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                  lm.ElasticNetCV(
+                                                      l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
                                                   dfmp, usedFactors, "y")
-        dfsp = dfsp.join(dfmp.loc[:, ["y"]], rsuffix = "Market")
+        dfsp = dfsp.join(dfmp.loc[:, ["y"]], rsuffix="Market")
 
         # Create beta model
-        calcBetas = pd.DataFrame(index = dfsp.index)
-        calcBetas = calcBetas.assign(cummX = dfsp.groupby(level = 1).yMarket.cumsum())
-        calcBetas = calcBetas.assign(cummY = dfsp.groupby(level = 1).y.cumsum())
-        calcBetas = calcBetas.assign(XY = dfsp.yMarket * dfsp.y)
-        calcBetas = calcBetas.assign(X2 = dfsp.yMarket ** 2)
-        calcBetas = calcBetas.assign(cummXY = calcBetas.groupby(level = 1).XY.cumsum())
-        calcBetas = calcBetas.assign(cummX2 = calcBetas.groupby(level = 1).X2.cumsum())
-        CBG = calcBetas.groupby(level = 1)
-        calcBetas = calcBetas.assign(next20DZeroBeta = (CBG.cummXY.shift(-19) - CBG.cummXY.shift(1)) /
-                                                       (CBG.cummX2.shift(-19) - CBG.cummX2.shift(1)))
-        calcBetas = calcBetas.assign(next20DBeta = (20.0 * (CBG.cummXY.shift(-19) - CBG.cummXY.shift(1)) -
-                                                    (CBG.cummX.shift(-19) - CBG.cummX.shift(1)) * (CBG.cummY.shift(-19) - CBG.cummY.shift(1))) /
-                                                   (20.0 * (CBG.cummX2.shift(-19) - CBG.cummX2.shift(1)) -
-                                                    (CBG.cummX.shift(-19) - CBG.cummX.shift(1)) ** 2))
-        dfsp = dfsp.assign(next20DZeroBeta = calcBetas.next20DZeroBeta, next20DBeta = calcBetas.next20DBeta)
+        calcBetas = pd.DataFrame(index=dfsp.index)
+        calcBetas = calcBetas.assign(cummX=dfsp.groupby(level=1).yMarket.cumsum())
+        calcBetas = calcBetas.assign(cummY=dfsp.groupby(level=1).y.cumsum())
+        calcBetas = calcBetas.assign(XY=dfsp.yMarket * dfsp.y)
+        calcBetas = calcBetas.assign(X2=dfsp.yMarket ** 2)
+        calcBetas = calcBetas.assign(cummXY=calcBetas.groupby(level=1).XY.cumsum())
+        calcBetas = calcBetas.assign(cummX2=calcBetas.groupby(level=1).X2.cumsum())
+        CBG = calcBetas.groupby(level=1)
+        calcBetas = calcBetas.assign(next20DZeroBeta=(CBG.cummXY.shift(-19) - CBG.cummXY.shift(1)) /
+                                                     (CBG.cummX2.shift(-19) - CBG.cummX2.shift(1)))
+        calcBetas = calcBetas.assign(next20DBeta=(20.0 * (CBG.cummXY.shift(-19) - CBG.cummXY.shift(1)) -
+                                                  (CBG.cummX.shift(-19) - CBG.cummX.shift(1)) * (
+                                                      CBG.cummY.shift(-19) - CBG.cummY.shift(1))) /
+                                                 (20.0 * (CBG.cummX2.shift(-19) - CBG.cummX2.shift(1)) -
+                                                  (CBG.cummX.shift(-19) - CBG.cummX.shift(1)) ** 2))
+        dfsp = dfsp.assign(next20DZeroBeta=calcBetas.next20DZeroBeta, next20DBeta=calcBetas.next20DBeta)
 
         elnetModel_Beta = createPredictionModel("ElasticNet - Beta",
-                                                lm.ElasticNetCV(l1_ratio = [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                lm.ElasticNetCV(
+                                                    l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
                                                 dfsp, usedFactors, "next20DZeroBeta")
-        dfsp = dfsp.assign(alpha = dfsp.y - dfsp.yMarket * dfsp.next20DZeroBeta)
+        dfsp = dfsp.assign(alpha=dfsp.y - dfsp.yMarket * dfsp.next20DZeroBeta)
 
         # Create dispersion model
-        dfmp = dfmp.assign(dispersion = dfsp.assign(dev = abs(dfsp.alpha) * math.sqrt(math.pi / 2)).groupby(level=0).dev.mean())
+        dfmp = dfmp.assign(
+            dispersion=dfsp.assign(dev=abs(dfsp.alpha) * math.sqrt(math.pi / 2)).groupby(level=0).dev.mean())
         elnetModel_Dispersion = createPredictionModel("ElasticNet - Dispersion",
-                                                      lm.ElasticNetCV(l1_ratio = [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                      lm.ElasticNetCV(
+                                                          l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
                                                       dfmp, usedFactors, "dispersion")
         dfsp = dfsp.join(dfmp.loc[:, ["dispersion"]])
 
         # Create volatility model
         elnetModel_Volatility = createPredictionModel("ElasticNet - Volatility",
-                                                      lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
-                                                      dfsp.assign(relDev = abs(dfsp.alpha) * math.sqrt(math.pi / 2) / dfsp.dispersion),
+                                                      lm.ElasticNetCV(
+                                                          l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                      dfsp.assign(relDev=abs(dfsp.alpha) * math.sqrt(
+                                                          math.pi / 2) / dfsp.dispersion),
                                                       usedFactors, "relDev")
-        dfsp = dfsp.assign(relVolatility = elnetModel_Volatility.predict(dfsp[usedFactors]))
+        dfsp = dfsp.assign(relVolatility=elnetModel_Volatility.predict(dfsp[usedFactors]))
 
         # Create alpha model
         elnetModel_Alpha = createPredictionModel("ElasticNet - Alpha",
-                                                 lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
-                                                 dfsp.assign(relAlpha = dfsp.alpha / dfsp.relVolatility / dfsp.dispersion),
+                                                 lm.ElasticNetCV(
+                                                     l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                 dfsp.assign(
+                                                     relAlpha=dfsp.alpha / dfsp.relVolatility / dfsp.dispersion),
                                                  usedFactors, "relAlpha")
-        dfsp = dfsp.assign(relAlpha = elnetModel_Alpha.predict(dfsp[usedFactors]))
+        dfsp.loc[~(
+            dfsp.alpha / dfsp.relVolatility / dfsp.dispersion).isnull(), "relAlpha"] = elnetModel_Alpha.cvPredictions
+        dfsp.loc[dfsp.relAlpha.isnull(), "relAlpha"] = elnetModel_Alpha.predict(
+            dfsp.loc[dfsp.relAlpha.isnull(), usedFactors])
 
         # Save everything to assetClass
         assetClasses[int(class22 * 2 + 1)].dfs = dfs
@@ -222,51 +248,94 @@ if __name__ == '__main__':
         assetClasses[int(class22 * 2 + 1)].elnetModel_Volatility = elnetModel_Volatility
         assetClasses[int(class22 * 2 + 1)].elnetModel_Alpha = elnetModel_Alpha
 
-    print("Starting Test")
+        if class22 == -1:
+            yPredictions = yPredictions.assign(ungrouped=dfsp.dispersion * dfsp.relVolatility * dfsp.relAlpha)
+        else:
+            yPredictions.loc[yPredictions.technical_22 == class22, 'group22'] = \
+                dfsp.dispersion * dfsp.relVolatility * dfsp.relAlpha
 
-    rewards = list()
+    elnetModel_Combine = createPredictionModel("ElasticNet - Combine",
+                                               lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99],
+                                                               fit_intercept = 0, positive = True),
+                                               yPredictions[~yPredictions.ungrouped.isnull() & ~yPredictions.group22.isnull()],
+                                               ["ungrouped", "group22"], "y")
 
-    # Iterate through test set
-    while True:
-        target = observation.target
-        timestamp = observation.features["timestamp"][0]
+print("Starting Test")
 
-        for class22 in class22Values:
-            dfc = observation.features.loc[observation.features.technical_22 == class22]
-            dfp = pd.DataFrame(index=dfc.id)
+rewards = list()
 
-            # Normalise the factors
-            for factor in usedFactors:
-                raw = np.array(dfc[factor])
-                new = np.array([float("NAN")] * raw.size)
-                for i, fr in assetClasses[int(class22 * 2 + 1)].factorRange.loc[factor].iterrows():
-                    new[(raw >= fr["min"]) & (raw < fr["max"])] = fr.z
-                dfp[factor] = new
-            dfp.fillna(0, inplace=True)
+# Iterate through test set
+while True:
+    target = observation.target
+    timestamp = observation.features["timestamp"][0]
 
-            # Create Market
-            dfm = pd.DataFrame(dfp.mean()).transpose()
+    # Create Overall Predictions
+    dfc = observation.features
+    dfp = pd.DataFrame(index=dfc.id)
 
-            ac = assetClasses[int(class22 * 2 + 1)]
+    # Normalise the factors
+    for factor in usedFactors:
+        raw = np.array(dfc[factor])
+        new = np.array([float("NAN")] * raw.size)
+        for i, fr in assetClasses[int(class22 * 2 + 1)].factorRange.loc[factor].iterrows():
+            new[(raw >= fr["min"]) & (raw < fr["max"])] = fr.z
+        dfp[factor] = new
+    dfp.fillna(0, inplace=True)
 
-            # Create y predictions
-            market = ac.elnetModel_Market.predict(dfm[usedFactors])
-            beta = ac.elnetModel_Beta.predict(dfp[usedFactors])
-            dispersion = ac.elnetModel_Dispersion.predict(dfm[usedFactors])
-            relVolatility = ac.elnetModel_Volatility.predict(dfp[usedFactors])
-            relAlpha = ac.elnetModel_Alpha.predict(dfp[usedFactors])
-            target.loc[observation.features.technical_22 == class22, 'y'] = dispersion * relVolatility * relAlpha
+    # Create Market
+    dfm = pd.DataFrame(dfp.mean()).transpose()
 
-        # We perform a "step" by making our prediction and getting back an updated "observation":
-        observation, reward, done, info = env.step(target)
+    ac = assetClasses[0]
 
-        rewards.append(reward)
+    # Create overall predictions
+    market = ac.elnetModel_Market.predict(dfm[usedFactors])
+    beta = ac.elnetModel_Beta.predict(dfp[usedFactors])
+    dispersion = ac.elnetModel_Dispersion.predict(dfm[usedFactors])
+    relVolatility = ac.elnetModel_Volatility.predict(dfp[usedFactors])
+    relAlpha = ac.elnetModel_Alpha.predict(dfp[usedFactors])
 
-        # if timestamp % 100 == 0:
-        print("Timestamp #{}".format(timestamp), reward)
+    target.loc[:, 'y'] = (dispersion * relVolatility * relAlpha) * elnetModel_Combine.coef_[0]
 
-        if done:
-            print("Public score: {}".format(info["public_score"]))
-            if testing:
-                pd.DataFrame(rewards).to_clipboard()
-            break
+    for class22 in class22Values[1:4]:
+        dfc = observation.features.loc[observation.features.technical_22 == class22]
+        dfp = pd.DataFrame(index=dfc.id)
+
+        # Normalise the factors
+        for factor in usedFactors:
+            raw = np.array(dfc[factor])
+            new = np.array([float("NAN")] * raw.size)
+            for i, fr in assetClasses[int(class22 * 2 + 1)].factorRange.loc[factor].iterrows():
+                new[(raw >= fr["min"]) & (raw < fr["max"])] = fr.z
+            dfp[factor] = new
+        dfp.fillna(0, inplace=True)
+
+        # Create Market
+        dfm = pd.DataFrame(dfp.mean()).transpose()
+
+        ac = assetClasses[int(class22 * 2 + 1)]
+
+        # Create group predictions
+        market = ac.elnetModel_Market.predict(dfm[usedFactors])
+        beta = ac.elnetModel_Beta.predict(dfp[usedFactors])
+        dispersion = ac.elnetModel_Dispersion.predict(dfm[usedFactors])
+        relVolatility = ac.elnetModel_Volatility.predict(dfp[usedFactors])
+        relAlpha = ac.elnetModel_Alpha.predict(dfp[usedFactors])
+
+        # Update y
+        target.loc[observation.features.technical_22 == class22, 'y'] += \
+            (dispersion * relVolatility * relAlpha) * elnetModel_Combine.coef_[1]
+
+
+    # We perform a "step" by making our prediction and getting back an updated "observation":
+    observation, reward, done, info = env.step(target)
+
+    rewards.append(reward)
+
+    # if timestamp % 100 == 0:
+    print("Timestamp #{}".format(timestamp), reward)
+
+    if done:
+        print("Public score: {}".format(info["public_score"]))
+        if testing:
+            pd.DataFrame(rewards).to_clipboard()
+        break
