@@ -70,7 +70,6 @@ def r_score(y_true, y_pred, sample_weight=None, multioutput=None):
     else:
         return r
 
-
 class Observation(object):
     def __init__(self, train, target, features):
         self.train = train
