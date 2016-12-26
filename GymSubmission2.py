@@ -226,8 +226,7 @@ if __name__ == '__main__':
 
         # Create alpha model
         elnetModel_Alpha = createPredictionModel("ElasticNet - Alpha",
-                                                 lm.ElasticNetCV(
-                                                     l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                 lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
                                                  dfsp.assign(
                                                      relAlpha=dfsp.alpha / dfsp.relVolatility / dfsp.dispersion),
                                                  usedFactors, "relAlpha")
