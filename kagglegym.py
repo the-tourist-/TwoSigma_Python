@@ -71,11 +71,11 @@ def r_score(y_true, y_pred, sample_weight=None, multioutput=None):
         return r
 
 class Observation(object):
-    def __init__(self, train, target, features):
+    def __init__(self, train, target, features, largeTrain):
         self.train = train
         self.target = target
         self.features = features
-
+        self.largeTrain = largeTrain
 
 class Environment(object):
     def __init__(self):
@@ -93,6 +93,7 @@ class Environment(object):
             self.unique_idx = i
             self.train = fullset[fullset.timestamp < timesplit]
             self.test = fullset[fullset.timestamp >= timesplit]
+            self.largeTrain = fullset
 
             # Needed to compute final score
             self.full = self.test.loc[:, ['timestamp', 'y']]
@@ -116,7 +117,7 @@ class Environment(object):
         # of api for feature
         features = subset.iloc[:, :110].reset_index(drop=True)
 
-        observation = Observation(self.train, target, features)
+        observation = Observation(self.train, target, features, self.largeTrain)
         return observation
 
     def step(self, target):
@@ -151,7 +152,7 @@ class Environment(object):
             # reset index to conform to how kagglegym works
             features = subset.iloc[:, 0:110].reset_index(drop=True)
 
-            observation = Observation(self.train, target, features)
+            observation = Observation(self.train, target, features, self.largeTrain)
 
         return observation, reward, done, info
 

@@ -4,7 +4,7 @@
     <bookmark url="file://$PROJECT_DIR$/GymSubmission.py" line="156" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8e29efe2-171e-43be-abeb-eb3a50e50757" name="Default" comment="">
+    <list default="true" id="8e29efe2-171e-43be-abeb-eb3a50e50757" name="Default" comment="Hard coded l1 and alpha values.  Redid">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/GymSubmission.py" afterPath="$PROJECT_DIR$/GymSubmission.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kagglegym.py" afterPath="$PROJECT_DIR$/kagglegym.py" />
@@ -28,8 +28,8 @@
       <file leaf-file-name="GymSubmission.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/GymSubmission.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="238">
-              <caret line="276" column="82" lean-forward="true" selection-start-line="276" selection-start-column="82" selection-end-line="276" selection-end-column="82" />
+            <state relative-caret-position="280">
+              <caret line="160" column="25" lean-forward="true" selection-start-line="160" selection-start-column="25" selection-end-line="160" selection-end-column="25" />
               <folding />
             </state>
           </provider>
@@ -48,8 +48,8 @@
       <file leaf-file-name="kagglegym.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kagglegym.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="359">
-              <caret line="72" column="0" lean-forward="false" selection-start-line="72" selection-start-column="0" selection-end-line="72" selection-end-column="0" />
+            <state relative-caret-position="2278">
+              <caret line="136" column="66" lean-forward="true" selection-start-line="136" selection-start-column="66" selection-end-line="136" selection-end-column="66" />
               <folding />
             </state>
           </provider>
@@ -77,8 +77,9 @@
       <find>class22 * 2 + 1</find>
       <find>r_score</find>
       <find>kagglegym.r_score</find>
-      <find>r_</find>
       <find>import</find>
+      <find>beta</find>
+      <find>r_</find>
     </findStrings>
     <replaceStrings>
       <replace>factors</replace>
@@ -87,9 +88,15 @@
       <replace>filteredData</replace>
       <replace>int(class22 * 2 + 1)</replace>
       <replace>r_score</replace>
+      <replace>relVolatility</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="Three and One Models" />
+      </list>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IdeDocumentHistory">
@@ -410,6 +417,14 @@
       <option name="presentableId" value="Default" />
       <updated>1482028691347</updated>
     </task>
+    <task id="LOCAL-00001" summary="Three Volatility and Beta Models and only one Alpha Model&#10;Constant of 0.25 added to prediction">
+      <created>1482674627924</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1482674627924</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TodoView">
@@ -429,8 +444,8 @@
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32972974" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.49297297" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32864866" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.49297297" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32864866" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32972974" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -468,6 +483,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="LIMIT_HISTORY" value="false" />
+    <MESSAGE value="Three Volatility and Beta Models and only one Alpha Model&#10;Constant of 0.25 added to prediction" />
+    <option name="LAST_COMMIT_MESSAGE" value="Three Volatility and Beta Models and only one Alpha Model&#10;Constant of 0.25 added to prediction" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -715,14 +732,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kagglegym.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="359">
-          <caret line="72" column="0" lean-forward="false" selection-start-line="72" selection-start-column="0" selection-end-line="72" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/GymSubmission2.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-187">
@@ -755,10 +764,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/kagglegym.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2278">
+          <caret line="136" column="66" lean-forward="true" selection-start-line="136" selection-start-column="66" selection-end-line="136" selection-end-column="66" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/GymSubmission.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="238">
-          <caret line="276" column="82" lean-forward="true" selection-start-line="276" selection-start-column="82" selection-end-line="276" selection-end-column="82" />
+        <state relative-caret-position="280">
+          <caret line="160" column="25" lean-forward="true" selection-start-line="160" selection-start-column="25" selection-end-line="160" selection-end-column="25" />
           <folding />
         </state>
       </provider>

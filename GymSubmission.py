@@ -1,5 +1,3 @@
-# ToDo: Create three models for volatility and beta.  Use only a single model for all other predictions
-# ToDo: Predict the market return to be the mean of the training market return
 # ToDo: On dfsp rescale each timestamp using dfmp and dfdp
 # ToDo: Do better imputation, possibly by adding previous timestamp data for factor (maybe use fancyimpute)
 # ToDo: Add flight/fight indicator to prediction - Weight stocks -1 to 1 by predicted volatility to create new factors (and y), and then predict the weighted y
@@ -52,6 +50,10 @@ def createPredictionModel(name, model, data, factors, outcome):
         print("Training R Score: %s" % "{0:.3%}".format(rScore))
     else:
         print("Model Rejected - No Coefficients")
+
+    if str(model.__class__) == "<class 'sklearn.linear_model.coordinate_descent.ElasticNetCV'>":
+        print("L1 Ratio: ", model.l1_ratio_)
+        print("Alpha: ", model.alpha_)
 
     if testing:
         # Perform CV
@@ -150,15 +152,15 @@ if __name__ == '__main__':
     dfmp.fillna(0, inplace=True)
     dfsp.fillna(0, inplace=True)
 
-    usedFactors = ["fundamental_0", "fundamental_6", "fundamental_8", "fundamental_23", "fundamental_53",
-                   "fundamental_55", "fundamental_60",
-                   "technical_7", "technical_13", "technical_20", "technical_22", "technical_29", "technical_30",
-                   "technical_34", "technical_35", "technical_40"]
+    usedFactors = ["fundamental_8", "fundamental_15", "fundamental_18", "fundamental_43", "fundamental_45",
+                   "fundamental_52", "fundamental_53", "fundamental_56", "fundamental_58", "fundamental_59",
+                   "technical_13", "technical_20", "technical_22", "technical_30", "technical_34", "technical_40"]
+    #marketFactors = ["fundamental_62", "fundamental_7", "technical_42", "technical_0", "technical_27", "technical_21"]
+    #usedFactors = usedFactors + marketFactors
 
     # Create market model
     elnetModel_Market = createPredictionModel("ElasticNet - Market",
-                                              lm.ElasticNetCV(
-                                                  l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                              lm.ElasticNetCV(l1_ratio=[0.01], alphas=[0.000504768968234]),
                                               dfmp, usedFactors, "y")
 
     # Create beta model
@@ -183,20 +185,20 @@ if __name__ == '__main__':
     dfspB = dfsp[dfs.technical_22 == 0]
     dfspC = dfsp[dfs.technical_22 > 0]
     elnetModel_BetaA = createPredictionModel("ElasticNet - Beta - A",
-                                             lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                             lm.ElasticNetCV(l1_ratio=[0.99], alphas=[0.000189633948432]),
                                              dfspA, usedFactors, "next20DZeroBeta")
     elnetModel_BetaB = createPredictionModel("ElasticNet - Beta - B",
-                                             lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                             lm.ElasticNetCV(l1_ratio=[0.99], alphas=[0.0001634045351]),
                                              dfspB, usedFactors, "next20DZeroBeta")
     elnetModel_BetaC = createPredictionModel("ElasticNet - Beta - C",
-                                             lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                             lm.ElasticNetCV(l1_ratio=[0.99], alphas=[0.000348812551586]),
                                              dfspC, usedFactors, "next20DZeroBeta")
     dfsp = dfsp.assign(alpha=dfsp.y - dfsp.yMarket * dfsp.next20DZeroBeta)
 
     # Create dispersion model
     dfmp = dfmp.assign(dispersion=dfsp.assign(dev=abs(dfsp.alpha) * math.sqrt(math.pi / 2)).groupby(level=0).dev.mean())
     elnetModel_Dispersion = createPredictionModel("ElasticNet - Dispersion",
-                                                  lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                  lm.ElasticNetCV(l1_ratio=[0.99], alphas=[1.65654786154e-06]),
                                                   dfmp, usedFactors, "dispersion")
     dfsp = dfsp.join(dfmp.loc[:, ["dispersion"]])
 
@@ -207,15 +209,15 @@ if __name__ == '__main__':
     dfspC = dfsp[dfs.technical_22 > 0]
     elnetModel_VolatilityA = createPredictionModel("ElasticNet - Volatility - A",
                                                    lm.ElasticNetCV(
-                                                       l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                       l1_ratio=[0.99], alphas=[4.57668989558e-05]),
                                                    dfspA, usedFactors, "relDev")
     elnetModel_VolatilityB = createPredictionModel("ElasticNet - Volatility - B",
                                                    lm.ElasticNetCV(
-                                                       l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                       l1_ratio=[0.99], alphas=[9.21495319242e-05]),
                                                    dfspB, usedFactors, "relDev")
     elnetModel_VolatilityC = createPredictionModel("ElasticNet - Volatility - C",
                                                    lm.ElasticNetCV(
-                                                       l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                                       l1_ratio=[0.99], alphas=[0.00013627990326]),
                                                    dfspC, usedFactors, "relDev")
     dfsp.loc[dfs.technical_22 < 0, "relVolatility"] = elnetModel_VolatilityA.predict(
         dfsp.loc[dfs.technical_22 < 0, usedFactors])
@@ -231,7 +233,7 @@ if __name__ == '__main__':
     # Create alpha model
     dfsp = dfsp.assign(relAlpha=dfsp.alpha / dfsp.relVolatility / dfsp.dispersion)
     elnetModel_Alpha = createPredictionModel("ElasticNet - Alpha",
-                                             lm.ElasticNetCV(l1_ratio=[0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]),
+                                             lm.ElasticNetCV(l1_ratio=[0.01], alphas=[0.01349897329]),
                                              dfsp, usedFactors, "relAlpha")
     dfsp = dfsp.assign(relAlpha=elnetModel_Alpha.predict(dfsp[usedFactors]))
     dfsp = dfsp.assign(yPrediction=dfsp.dispersion * dfsp.relVolatility * dfsp.alpha)
@@ -280,7 +282,7 @@ if __name__ == '__main__':
         relVolatility[observation.features.technical_22 > 0] = elnetModel_VolatilityC.predict(
             dfp.loc[np.array(observation.features.technical_22 > 0), usedFactors])
         relAlpha = elnetModel_Alpha.predict(dfp[usedFactors])
-        target.loc[:, 'y'] = 0.00025 + dispersion * relVolatility * relAlpha
+        target.loc[:, 'y'] = 0.0000 + dispersion * relVolatility * relAlpha
 
         # We perform a "step" by making our prediction and getting back an updated "observation":
         observation, reward, done, info = env.step(target)
