@@ -132,7 +132,8 @@ class Environment(object):
             observation = None
             reward = r_score(self.temp_test_y, target.loc[:, 'y'])
             score = r_score(self.full['y'], self.full['y_hat'])
-            info = {'public_score': score}
+            cor = self.full.y.corr(self.full.y_hat)
+            info = {'public_score': score, 'correlation': cor}
         else:
             reward = r_score(self.temp_test_y, target.loc[:, 'y'])
             done = False
